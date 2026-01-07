@@ -1,0 +1,29 @@
+﻿project:
+    name: itap
+    timezone: "America/Chicago"
+
+telemetry:
+    n_devices: 25
+    seed: 42
+    start_time: "2026-01-01 00:00:00"
+    hours: 6
+    freq_seconds: 10
+
+signals:
+    rpm_base: 1800
+    temp_base_c: 55
+    vib_base: 0.25
+    current_base_a: 6.5
+
+faults:
+  enabled: true
+  fault_rate: 0.02
+  types:
+    - "overheat_drift"
+    - "bearing_wear"
+    - "sensor_dropout"
+    - "power_spike"
+
+output:
+    dir: "data/raw"
+    format: "csv"

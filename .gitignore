@@ -1,1 +1,20 @@
-﻿.vs/
+﻿# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Data outputs (do not commit generated datasets)
+data/raw/*
+data/processed/*
+data/*.db
+*.sqlite
+*.sqlite3
+
+# Allow placeholder files
+!data/**/.gitkeep
+
+# Local-only configs (keep example configs committed)
+configs/*local*.yaml
+configs/*local*.yml
+!configs/local.example.yaml
