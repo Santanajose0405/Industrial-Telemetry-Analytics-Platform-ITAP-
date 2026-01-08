@@ -1,0 +1,24 @@
+{
+  "rows": 54000,
+  "schema": {
+    "schema_valid": true,
+    "missing_columns": []
+  },
+  "missing_rates": {
+    "timestamp": 0.0,
+    "device_id": 0.0,
+    "state": 0.0,
+    "rpm": 0.0,
+    "temp_c": 0.00687037037037037,
+    "vibration_g": 0.00687037037037037,
+    "current_a": 0.00687037037037037,
+    "voltage_v": 0.0,
+    "error_code": 0.0,
+    "anomaly_tag": 0.0
+  },
+  "range_checks": {
+    "rpm_negative": 0,
+    "temp_out_of_bounds": 0,
+    "voltage_out_of_bounds": 0
+  }
+}
