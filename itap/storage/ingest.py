@@ -16,17 +16,17 @@ from sqlalchemy import select
 from itap.storage.database import ENGINE, SessionLocal
 from itap.storage.models import Base, TelemetryRecord
 
-def init_db() -> None:
+def init_db(engine=ENGINE) -> None:
     """ Create database tables if they do not exist. """
-    Base.metadata.create_all(bind=ENGINE)
+    Base.metadata.create_all(bind=engine)
 
-def ingest_csv(csv_path: str) -> int:
+def ingest_csv(csv_path: str, engine=ENGINE, session_factory=SessionLocal) -> int:
     """
     Ingest telemetry CSV into the database.
 
     Returns the number of rows inserted.
     """
-    init_db()
+    init_db(engine=engine)
 
     df = pd.read_csv(csv_path)
 
@@ -34,7 +34,7 @@ def ingest_csv(csv_path: str) -> int:
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
     
     inserted = 0
-    with SessionLocal() as session:
+    with session_factory() as session:
         for _, row in df.iterrows():
             # Simple idempotency check: device_id + timestamp
             exists = session.execute(
