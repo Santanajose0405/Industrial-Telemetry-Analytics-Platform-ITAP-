@@ -41,6 +41,9 @@ def main() -> None:
     # We evaluate on the later slice to simulate "future" scoring.
     df_test = df.iloc[split_idx:].copy()
 
+    # Optional: focus on production-like behavior; MAINT often looks anomalous by design.
+    df_test = df_test[df_test["state"].isin(["RUN", "IDLE"])].copy()
+
     # Build features for the test slice.
     X_test, y_test = build_rolling_features(df_test, window=30)
 
@@ -56,7 +59,7 @@ def main() -> None:
 
     # Threshold sweep: percentile thresholds approximate "flag top X% as anomalous".
     # Lower percentile => more alerts (higher recall, lower precision).
-    candidates = np.percentile(scores, [90, 95, 97, 98, 99])
+    candidates = np.percentile(scores, [85, 88, 90, 95, 97, 98, 99])
 
     results = []
     for t in candidates:
@@ -78,6 +81,18 @@ def main() -> None:
     # Use the selected threshold to generate a binary prediction vector (0/1).
     threshold = float(best["threshold"])
     pred = (scores >= threshold).astype(int)
+
+    # Per-tag recall: which injected failure modes are we detecting?
+    tags = df_test["anomaly_tag"].fillna("").astype(str).str.strip()
+    tags = tags.replace({"nan": "", "None": "", "NULL": "", "null": ""})
+
+    print("\nPer-tag recall (on tagged rows only):")
+    for t in sorted(set(tags) - {""}):
+        mask = (tags == t).to_numpy()
+        tp = int(((y_test.to_numpy() ==1) & (pred == 1) & mask).sum())
+        fn = int(((y_test.to_numpy() == 1) & (pred == 0) & mask).sum())
+        rec = tp / (tp + fn) if (tp + fn) else 0.0
+        print(f"- {t}: recall={rec:.3f} (tp={tp}, fn={fn})")
 
     # Print top-N highest-scoring rows to support investigation ("what did it flag?").
     top_idx = np.argsort(scores)[-20:][::-1]

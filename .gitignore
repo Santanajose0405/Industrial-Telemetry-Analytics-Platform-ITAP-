@@ -1,4 +1,4 @@
-﻿# Visual Studio
+# Visual Studio
 .vs/
 
 # Python cache
@@ -25,3 +25,7 @@ data/*.db
 configs/*local*.yaml
 configs/*local*.yml
 !configs/local.example.yaml
+
+# ML artifacts
+artifacts/*
+!artifacts/.gitkeep

@@ -16,6 +16,14 @@ This project is intentionally **data-driven, testable, and production-oriented**
 
 ---
 
+## Design Notes
+ - Validation is performed before storage to prevent corrupt or misleading data
+ - SQL ingestion is idempotent to support retries and automation
+- Metrics are derived from persisted data to reflect real operational state
+- SQLite is used for local development; schema is PostgreSQL-compatible
+
+---
+
 ## Architecture Overview
 
 Telemetry Generator

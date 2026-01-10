@@ -1,10 +1,15 @@
 """
 Operational metrics for telemetry datasets stored in SQL.
 
-These metrics support:
-- dashboard monitoring
-- troubleshooting and incident response
-- baseline statistics for ML feature engineering
+This module provides high-level health and monitoring statistics
+derived from persisted telemetry data. These metrics are intended
+to support:
+- Dashboard monitoring
+- Issue investigation and troubleshooting
+- Data quality assessment prior to ML modeling
+- Baseline analytics for system behavior
+
+The functions in this module are read-only and do not modify state.
 """
 
 from __future__ import annotations
@@ -46,7 +51,16 @@ def rows_per_device(top_n: int = 10) -> pd.DataFrame:
 
 def anomaly_rate() -> Dict[str, float]:
     """
-    Fraction of rows with a non-empty anomaly tag, and breakdown by tag.
+    Compute anomaly statistics for the telemetry table.
+
+    Returns: 
+        A dictionary containing:
+        - anomaly_rate: fraction of rows with a non-empty anomaly_tag
+        - by_tag: count of rows per anomaly type
+
+    Notes:
+        - Rows with empty anomaly_tag (" ") are treated as normal
+        - Safe to call on empty tables (returns zero rates)
     """
     with SessionLocal() as session:
         total = session.execute(select(func.count()).select_from(TelemetryRecord)).scalar_one()
