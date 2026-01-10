@@ -55,6 +55,12 @@ def main() -> None:
     df = load_training_dataframe()
     if df.empty:
         raise SystemExit("No telemetry found in DB. Run ingestion first.")
+    # Filter to production-like operating states only.
+    # MAINT is a different regime and should not influence baseline behavior.
+    df = df[df["state"].isin(["RUN", "IDLE"])].copy()
+
+    if df.empty:
+        raise SystemExit("No RUN/IDLE telemetry rows available after filtering.")
 
     X, y = build_rolling_features(df, window=30)
 
