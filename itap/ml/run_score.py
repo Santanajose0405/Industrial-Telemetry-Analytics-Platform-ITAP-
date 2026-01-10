@@ -5,6 +5,11 @@ This is an offline scoring job that helps you iterate on:
 - feature window sizes
 - contamination settings
 - score thresholds
+
+Key design notes:
+- We evaluate on a time-based holdout (later timestamps) to reduce leakage.
+- We sweep score thresholds (percentiles) to understand precision/recall tradeoffs.
+- We print the highest-scoring events to support troubleshooting and model iteration.
 """
 
 from __future__ import annotations
@@ -21,8 +26,8 @@ from itap.ml.run_train import load_training_dataframe
 
 
 def main() -> None:
-    model_path = "artifacts/isoforest.joblib"
-    if not Path(model_path).exists():
+    model_path = Path("artifacts/isoforest.joblib")
+    if not model_path.exists():
         raise SystemExit("Model not found. Run: python -m itap.ml.run_train")
 
     df = load_training_dataframe()
@@ -33,15 +38,24 @@ def main() -> None:
     df = df.sort_values("timestamp").reset_index(drop=True)
     split_idx = int(len(df) * 0.70)
 
+    # We evaluate on the later slice to simulate "future" scoring.
     df_test = df.iloc[split_idx:].copy()
 
-    # Build features on test slice (we are evaluating scoring performance here).
+    # Build features for the test slice.
     X_test, y_test = build_rolling_features(df_test, window=30)
 
-    pipeline = load_pipeline(model_path)
-    scores = pipeline.score(X_test)
+    pipeline = load_pipeline(str(model_path))
+    try:
+        scores = pipeline.score(X_test)
+    except ValueError as e:
+        raise SystemExit(
+            "Feature mismatch between trained model and current feature set.\n"
+            "Re-train the model with: python -m itap.ml.run_train\n\n"
+            f"Original error: {e}"
+        )
 
-    # Threshold sweep: percentile thresholds approximate "flag top X% as anomalous"
+    # Threshold sweep: percentile thresholds approximate "flag top X% as anomalous".
+    # Lower percentile => more alerts (higher recall, lower precision).
     candidates = np.percentile(scores, [90, 95, 97, 98, 99])
 
     results = []
@@ -49,7 +63,8 @@ def main() -> None:
         m = evaluate_scores(y_test.to_numpy(), scores, threshold=float(t))
         results.append(m)
 
-    # Sort by recall, then precision (tunable policy depending on business needs).
+    # Selection policy: prioritize recall, break ties with precision.
+    # In real systems, this is driven by business cost (missed faults vs false alarms).
     results = sorted(results, key=lambda x: (x["recall"], x["precision"]), reverse=True)
     best = results[0]
 
@@ -60,26 +75,35 @@ def main() -> None:
     print("\nSelected metrics:")
     print(json.dumps(best, indent=2))
 
-    # Optional but high-value: show the most anomalous rows for inspection.
+    # Use the selected threshold to generate a binary prediction vector (0/1).
+    threshold = float(best["threshold"])
+    pred = (scores >= threshold).astype(int)
+
+    # Print top-N highest-scoring rows to support investigation ("what did it flag?").
     top_idx = np.argsort(scores)[-20:][::-1]
-    top_anomalies = df_test.iloc[top_idx][
-        [
-            "timestamp",
-            "device_id",
-            "state",
-            "rpm",
-            "temp_c",
-            "vibration_g",
-            "current_a",
-            "voltage_v",
-            "error_code",
-            "anomaly_tag",
-        ]
-    ].copy()
+    top_anomalies = df_test.iloc[top_idx].copy()
+    top_anomalies["score"] = scores[top_idx]
+    top_anomalies["pred"] = pred[top_idx]
+
+    cols = [
+        "timestamp",
+        "device_id",
+        "state",
+        "rpm",
+        "temp_c",
+        "vibration_g",
+        "current_a",
+        "voltage_v",
+        "error_code",
+        "anomaly_tag",
+        "score",
+        "pred",
+    ]
 
     print("\nTop 20 anomalous events (highest scores):")
-    print(top_anomalies)
+    print(top_anomalies[cols])
 
+    # Persist the chosen metrics for tracking over iterations.
     Path("artifacts").mkdir(parents=True, exist_ok=True)
     with open("artifacts/metrics.json", "w", encoding="utf-8") as f:
         json.dump(best, f, indent=2)

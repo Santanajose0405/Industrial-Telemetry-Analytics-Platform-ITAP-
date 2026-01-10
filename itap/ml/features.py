@@ -50,6 +50,7 @@ def build_rolling_features(
     # Ensure consistent ordering for rolling calculations.
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
     df = df.sort_values(["device_id", "timestamp"]).reset_index(drop=True)
+    eps = 1e-6  # prevents division by zero for early/flat windows
 
     # Ground truth for evaluation: anomaly_tag is injected by the simulator.
     # anomaly_tag is considered "present" only if it contains a real, non-empty label.
@@ -74,12 +75,40 @@ def build_rolling_features(
         # Rolling features per device. We use min_periods to avoid dropping early rows.
         grp = df.groupby("device_id")[sig]
 
-        feature_frames.append(grp.rolling(window=window, min_periods=max(5, window // 5)).mean().rename(f"{sig}_mean"))
-        feature_frames.append(grp.rolling(window=window, min_periods=max(5, window // 5)).std().rename(f"{sig}_std"))
-        feature_frames.append(grp.rolling(window=window, min_periods=max(5, window // 5)).min().rename(f"{sig}_min"))
-        feature_frames.append(grp.rolling(window=window, min_periods=max(5, window // 5)).max().rename(f"{sig}_max"))
+        # Rolling features per device.
+        # We drop the group level so every feature aligns on df's flat row index.
+        r = grp.rolling(window=window, min_periods=max(5, window // 5))
 
-    X = pd.concat(feature_frames, axis=1).reset_index(level=0, drop=True)
+        feature_frames.append(
+            r.mean().reset_index(level=0, drop=True).rename(f"{sig}_mean")
+        )
+        feature_frames.append(
+            r.std().reset_index(level=0, drop=True).rename(f"{sig}_std")
+        )
+        feature_frames.append(
+            r.min().reset_index(level=0, drop=True).rename(f"{sig}_min")
+        )
+        feature_frames.append(
+            r.max().reset_index(level=0, drop=True).rename(f"{sig}_max")
+        )
+
+        # Rolling baseline stats for deviation/trend features.
+        # groupby+rolling returns a MultiIndex (device_id, row_index), so we drop the group level
+        # to align with df's flat row index before doing arithmetic with `cur`.
+        rolling_mean = r.mean().reset_index(level=0, drop=True)
+        rolling_std = r.std().reset_index(level=0, drop=True)
+
+        cur = df[sig]
+        feature_frames.append((cur - rolling_mean).rename(f"{sig}_delta"))
+        feature_frames.append(((cur - rolling_mean) / (rolling_std + eps)).rename(f"{sig}_zscore"))
+        
+        # First difference: captures abrupt changes per device (also needs flattened index)
+        feature_frames.append(
+            grp.diff().reset_index(level=0, drop=True).rename(f"{sig}_diff")
+        )
+
+
+    X = pd.concat(feature_frames, axis=1)
 
     # std can be NaN when min_periods not met; fill with 0 as "no variability observed yet".
     X = X.replace([np.inf, -np.inf], np.nan).fillna(0.0)
