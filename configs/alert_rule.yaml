@@ -1,0 +1,70 @@
+version: 1
+
+defaults:
+  enabled: true
+  min_score: null            # if set, only consider anomalies above this score
+  severity_map:
+    INFO: 1
+    WARNING: 2
+    CRITICAL: 3
+
+routing:
+  # Tag-based routing (operator queues)
+  tagged_fault_routing:
+    enabled: true
+    mapping:
+      bearing_wear: maintenance
+      overheat_drift: thermal
+      sensor_dropout: instrumentation
+      power_spike: electrical
+
+rules:
+  # --------------------------------------------
+  # 1) Burst alert: N anomalies in M minutes
+  # --------------------------------------------
+  - id: burst_per_device
+    type: burst
+    enabled: true
+    severity: CRITICAL
+    n_anomalies: 3
+    window_minutes: 10
+    cooldown_minutes: 20
+    emit: one_per_window       # one alert per device per window
+    message: "Anomaly burst detected"
+
+  # ---------------------------------------------------------
+  # 2) Dominant family: e.g. Voltage > 45% contribution
+  # ---------------------------------------------------------
+  - id: dominant_voltage
+    type: dominant_family
+    enabled: true
+    severity: WARNING
+    family: Voltage
+    min_percent: 45.0
+    cooldown_minutes: 30
+    message: "Voltage is dominant in anomaly attribution"
+
+  # You can add more dominant-family rules easily:
+  - id: dominant_temperature
+    type: dominant_family
+    enabled: false
+    severity: WARNING
+    family: Temperature
+    min_percent: 45.0
+    cooldown_minutes: 30
+    message: "Temperature is dominant in anomaly attribution"
+
+  # ---------------------------------------------------------
+  # 3) Tagged fault routing: elevates known faults to queue
+  # ---------------------------------------------------------
+  - id: tagged_fault
+    type: tag_route
+    enabled: true
+    severity: WARNING
+    tags:
+      - bearing_wear
+      - overheat_drift
+      - sensor_dropout
+      - power_spike
+    cooldown_minutes: 15
+    message: "Known fault tag detected (routed)"

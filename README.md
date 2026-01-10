@@ -1,247 +1,294 @@
 # Industrial Telemetry Analytics Platform (ITAP)
 
-A production-oriented industrial analytics system that **detects, explains, aggregates, and alerts on anomalous behavior** in time-series telemetry data.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-ITAP combines unsupervised machine learning with operator-friendly diagnostics to move beyond simple anomaly flags into **actionable intelligence**.
+A production-oriented industrial analytics platform for **anomaly detection, explainability, aggregation, and operator-ready alerting** on time-series sensor data.
 
----
+ITAP transforms raw telemetry into actionable intelligence by detecting anomalous behavior, explaining *why* anomalies occur, aggregating insights at device and fleet levels, and emitting high-quality alerts through declarative rules.
 
-## Why ITAP?
-
-Most anomaly detection systems stop at:
-> "Something looks weird."
-
-**ITAP answers:**
-- **What happened?** (Per-event explainability)
-- **Why did it happen?** (Feature attribution by sensor family)
-- **How severe is it?** (Rule-based severity levels)
-- **Is it systemic or isolated?** (Fleet-level aggregation)
-- **What should an operator do next?** (Root cause identification)
-
-This platform is designed to feel **operator-ready**, not experimental.
+> **Design Philosophy:** Built to reflect real-world IoT/industrial analytics systems, not academic demos.
 
 ---
 
-## Core Capabilities
+## 🎯 Project Overview
 
-### 1. Telemetry Simulation & Ingestion
-- Multi-device time-series generation with controllable fault injection
-- Realistic operating states (RUN, IDLE, MAINT)
-- Fault types: overheat drift, bearing wear, power spikes, sensor dropouts
-- Schema validation before storage
-- Idempotent SQL ingestion pipeline
+### What ITAP Does
+
+Most anomaly detection systems stop at flagging outliers. ITAP goes further:
+
+| Traditional Approach | ITAP Approach |
+|---------------------|---------------|
+| "Something is wrong" | **What** happened, **why** it happened, **how severe** it is |
+| Per-event noise | Fleet-level patterns and device prioritization |
+| Black-box scores | Feature attribution by sensor family |
+| Alert fatigue | Rule-based, high-quality alerts with root cause |
+
+### Key Features
+
+- 🔍 **Anomaly Detection** - Unsupervised ML (Isolation Forest) trained on normal operation
+- 🧠 **Explainability** - Per-event feature attribution with sensor family grouping
+- 📊 **Aggregation** - Device and fleet-level health summaries
+- 🚨 **Smart Alerting** - YAML-driven rules to reduce noise and increase operator trust
+- 🔧 **Production-Ready** - Idempotent pipelines, reproducible artifacts, comprehensive logging
+
+---
+
+## 📋 Table of Contents
+
+- [Key Capabilities](#-key-capabilities)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Usage Guide](#-usage-guide)
+- [Project Structure](#-project-structure)
+- [Configuration](#-configuration)
+- [Outputs & Artifacts](#-outputs--artifacts)
+- [Design Principles](#-design-principles)
+- [Roadmap](#-roadmap)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## ⚡ Key Capabilities
+
+### 1. Telemetry Simulation
+
+Generate realistic multi-device industrial telemetry with controllable fault injection:
+
+- **Configurable parameters**: Sampling rate, duration, device count
+- **Operating states**: RUN, IDLE, MAINT
+- **Fault types**: 
+  - Bearing wear (gradual vibration increase)
+  - Overheat drift (thermal runaway)
+  - Power instability (voltage/current spikes)
+  - Sensor dropout (missing data patterns)
 
 ### 2. Time-Series Feature Engineering
-- Rolling-window statistical features (mean, std, min, max)
-- Trend and seasonality decomposition
-- Delta and z-score deviation indicators
-- Frequency-domain features (FFT energy, dominant frequency bins)
-- Event-based counters (error streaks, state transitions, time-since-event)
-- All features are per-device, time-aligned, and leakage-safe
 
-### 3. Unsupervised Anomaly Detection
-- Isolation Forest–based scoring pipeline
-- Trained only on normal operating data
-- Produces continuous anomaly scores (higher = more anomalous)
-- Model-agnostic design (StandardScaler + IsolationForest)
-- Scales across devices and operating states
+Extract meaningful features from raw sensor signals:
 
-### 4. Threshold Optimization
-- Automated threshold sweep across score percentiles
-- Precision, recall, F1, ROC-AUC metrics
-- Operator-friendly selection (prioritizes recall, then precision)
-- Per-fault-type recall diagnostics
-- Best threshold persisted for production use
-
-### 5. Explainability (Operator-Facing)
-For each anomalous event, ITAP provides:
-- **Top contributing features** with normalized % attribution
-- **Sensor family grouping** (Voltage, Temperature, Current, RPM, Vibration)
-- **Human-readable explanations** instead of raw model internals
-
-**Example output:**
-```
-- 2026-01-01 05:31:10 | DEV-0006 | RUN | tag=power_spike | score=0.185200 | pred=1
-    Families: Voltage=24.7%, Temperature=24.6%, Current=20.2%
-    voltage_v_trend: 5.9%
-    voltage_v_mean: 5.9%
-    voltage_v_min: 5.9%
-    voltage_v_max: 5.4%
-    temp_c_max: 5.2%
+```python
+# Features include:
+- Rolling statistics (mean, std, min, max)
+- Trend indicators (slope, drift)
+- Deviation metrics (delta, z-score)
+- Frequency-domain features (FFT energy, dominant frequency)
+- Event counters (error streaks, state transitions)
 ```
 
-### 6. Aggregation (Fleet & Device Level)
-Anomalies are aggregated to surface **patterns**, not just individual spikes.
+**Signal Families**: RPM, Temperature, Voltage, Current, Vibration
 
-Per-device summaries include:
-- Number of flagged events
-- Average and 95th-percentile anomaly scores
-- Dominant sensor families (normalized across all events)
+All features are:
+- ✅ Per-device isolated
+- ✅ Time-aware (no leakage)
+- ✅ Interpretable
+- ✅ Deterministic
 
-**Example output:**
+### 3. Anomaly Detection
+
+Unsupervised learning pipeline optimized for industrial data:
+
+- **Model**: StandardScaler + Isolation Forest
+- **Training**: Normal operation data only
+- **Output**: Continuous anomaly scores (higher = more anomalous)
+- **Threshold Selection**: Automated recall/precision sweep
+- **Serialization**: Fully reproducible via `joblib`
+
+**Why Isolation Forest?**  
+Robust to noise, fast training/inference, no labeled data required, works well with mixed-feature industrial data.
+
+### 4. Explainability (Operator-Facing)
+
+Every flagged anomaly includes human-readable explanations:
+
+**Example Output:**
 ```
-Fleet/Device Aggregations
-- DEV-0006 | n=3 | avg_score=0.1765 | p95=0.1839 | Voltage=25.2%, Temperature=25.0%, Current=20.1%
-- DEV-0003 | n=2 | avg_score=0.1623 | p95=0.1712 | Vibration=28.4%, RPM=22.1%, Temperature=19.3%
-```
+2026-01-01 05:31:10 | DEV-0006 | RUN | score=0.1852
 
-This enables:
-- Device-level health triage
-- Fleet-wide reliability assessment
-- Predictive maintenance prioritization
+Sensor Family Attribution:
+  Voltage:      25.2%
+  Temperature:  25.0%
+  Current:      20.1%
+  RPM:          16.2%
+  Vibration:    10.3%
 
-### 7. Alerting (Rule-Based + ML Hybrid)
-Alerts combine anomaly scores with deterministic rule logic based on sensor family dominance.
-
-**Alert rules include:**
-- Power instability (Voltage + Current dominance)
-- Thermal overload (Temperature dominance)
-- Mechanical wear (Vibration + RPM dominance)
-- Electrical noise (Voltage dominance)
-- Fallback rule for uncategorized anomalies
-
-**Example alert:**
-```
-CRITICAL | 2026-01-01 05:31:10 | DEV-0006 | RUN | score=0.1852
-cause=Power instability | conf=1.00 | Voltage=24.7%, Temperature=24.6%, Current=20.2%
-    voltage_v_trend: 5.9%
-    voltage_v_mean: 5.9%
-    tag=power_spike
-    rule=power_instability_voltage_current
-```
-
-Each alert provides:
-- **Severity** (INFO / WARNING / CRITICAL)
-- **Root cause** identification
-- **Confidence score** (rule match strength)
-- **Timestamp and device context**
-- **Top contributing features**
-
----
-
-## System Architecture
-
-```
-Telemetry Generator
-    ↓
-Validation & Diagnostics
-    ↓
-CSV Ingestion Pipeline (Idempotent)
-    ↓
-SQL Storage (SQLite / PostgreSQL-ready)
-    ↓
-Rolling-Window Feature Engineering
-    ↓
-Anomaly Scoring (Isolation Forest)
-    ↓
-Threshold Selection & Evaluation
-    ↓
-Per-Event Explainability
-    ↓
-Fleet/Device Aggregation
-    ↓
-Alert Generation & Severity Classification
-    ↓
-JSON Artifacts & Operator Output
+Top Contributing Features:
+  voltage_v_trend:  6.0%
+  voltage_v_mean:   6.0%
+  voltage_v_min:    6.0%
+  voltage_v_max:    5.5%
+  temp_c_max:       5.3%
 ```
 
----
+This answers: *"Why did the system flag this event?"*
 
-## Repository Structure
+### 5. Fleet & Device Aggregation
 
+Move from individual events to strategic insights:
+
+**Device-Level Summary:**
 ```
-itap/
-├── telemetry/              # Telemetry simulation & fault injection
-│   ├── generator.py
-│   ├── faults.py
-│   └── run_generate.py
-│
-├── validation/             # Schema, missing data, and range validation
-│   ├── schema.py
-│   ├── diagnostics.py
-│   └── report.py
-│
-├── storage/                # SQL models, database config, ingestion
-│   ├── database.py
-│   ├── models.py
-│   ├── ingest.py
-│   └── query.py
-│
-├── ml/                     # Feature engineering, training, scoring, evaluation
-│   ├── features.py         # Time-series feature extraction
-│   ├── anomaly.py          # Isolation Forest pipeline
-│   ├── evaluate.py         # Threshold sweep & metrics
-│   ├── explain.py          # Per-event explainability
-│   ├── aggregate.py        # Fleet/device aggregation
-│   ├── alerts.py           # Alert rules & severity classification
-│   ├── run_train.py        # Model training script
-│   └── run_score.py        # Scoring & diagnostics script
-│
-├── configs/
-│   └── local.example.yaml
-│
-├── data/
-│   └── raw/                # Generated telemetry (gitignored)
-│
-├── artifacts/              # Model outputs (gitignored)
-│   ├── isoforest.joblib
-│   ├── metrics.json
-│   ├── explanations_top.json
-│   ├── aggregate_summaries.json
-│   └── alerts.json
-│
-├── docs/
-│   └── validation_report_sample.json
-│
-├── tests/
-│   └── test_validation.py
-│
-├── requirements.txt
-├── pytest.ini
-└── README.md
+DEV-0006 | n=3 | avg_score=0.1765 | p95=0.1839
+Dominant Families: Voltage=25.2%, Temperature=25.0%, Current=20.1%
+```
+
+**Enables:**
+- 🏭 Fleet health dashboards
+- 🔧 Maintenance prioritization
+- 📈 Trend analysis
+- 💰 Cost optimization
+
+### 6. Intelligent Alerting
+
+**Not all anomalies are alerts.** ITAP uses declarative rules to ensure high signal-to-noise ratio.
+
+#### Alert Rule Types
+
+**Burst Detection:**
+```yaml
+type: burst
+device_window_minutes: 15
+min_anomalies: 3
+severity: critical
+cause: "Repeated anomalies detected"
+```
+
+**Dominant Sensor Family:**
+```yaml
+type: dominant_family
+family: Voltage
+min_percent: 45
+severity: critical
+cause: "Power instability"
+```
+
+**Tagged Fault Routing:**
+```yaml
+type: tag_route
+tag: bearing_wear
+route: maintenance
+severity: warning
+cause: "Mechanical degradation"
+```
+
+**Alert Output:**
+```
+🔴 CRITICAL | 2026-01-01 05:31:10 | DEV-0006 | RUN
+Score: 0.1852 | Confidence: 1.00
+Root Cause: Power instability
+Families: Voltage=24.7%, Temperature=24.6%, Current=20.2%
+Rule: power_instability_voltage_current
 ```
 
 ---
 
-## Outputs & Artifacts
+## 🏗 Architecture
 
-Running the scoring pipeline produces operator-ready artifacts:
-
-| File | Description |
-|------|-------------|
-| `artifacts/metrics.json` | Selected threshold and performance metrics (precision, recall, F1, ROC-AUC) |
-| `artifacts/explanations_top.json` | Per-event feature attributions and sensor family breakdowns |
-| `artifacts/aggregate_summaries.json` | Device-level and fleet-level anomaly summaries |
-| `artifacts/alerts.json` | Operator-ready alerts with severity, root cause, and confidence |
-
-These artifacts are designed for:
-- Real-time dashboards
-- REST APIs
-- Incident management systems (PagerDuty, ServiceNow, etc.)
-- Offline analysis and reporting
-- Predictive maintenance workflows
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Telemetry Generator                       │
+│              (Multi-device, fault injection)                 │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│              Validation & Quality Checks                     │
+│          (Schema, ranges, missing data analysis)             │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 SQL Storage (SQLite)                         │
+│              (Idempotent ingestion pipeline)                 │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│            Time-Series Feature Engineering                   │
+│     (Rolling windows, FFT, trend, event counters)            │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│          Anomaly Scoring (Isolation Forest)                  │
+│              (Trained on normal data only)                   │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│             Threshold Selection & Evaluation                 │
+│          (Precision/Recall sweep, ROC-AUC)                   │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│         Explainability (Feature Attribution)                 │
+│       (|z|-score contributions, sensor families)             │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│        Aggregation (Device & Fleet Summaries)                │
+│    (Count, avg score, p95, dominant families)                │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│          Alert Generation (YAML-Driven Rules)                │
+│   (Burst detection, family dominance, tag routing)           │
+└────────────────────┬────────────────────────────────────────┘
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│              Operator-Ready Artifacts                        │
+│    (JSON: metrics, explanations, summaries, alerts)          │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Setup Instructions
+## 🚀 Quick Start
 
-### 1. Create and activate a virtual environment
+### Prerequisites
+
+- Python 3.9 or higher
+- Virtual environment tool (`venv`, `conda`, etc.)
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/itap.git
+cd itap
+
+# Create and activate virtual environment
 python -m venv .venv
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # macOS/Linux
-```
 
-### 2. Install dependencies
+# Windows
+.venv\Scripts\activate
 
-```bash
+# macOS/Linux
+source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
+### Basic Workflow
+
+```bash
+# 1. Generate synthetic telemetry
+python -m itap.telemetry.run_generate
+
+# 2. Validate data quality
+python -m itap.validation.report
+
+# 3. Ingest into database
+python -m itap.storage.ingest
+
+# 4. Train anomaly detection model
+python -m itap.ml.run_train
+
+# 5. Score, explain, aggregate, and alert
+python -m itap.ml.run_score
+```
+
 ---
 
-## Usage
+## 📖 Usage Guide
 
 ### 1. Generate Telemetry
 
@@ -249,38 +296,49 @@ pip install -r requirements.txt
 python -m itap.telemetry.run_generate
 ```
 
-**Output:**
-- `data/raw/telemetry_sample.csv` (gitignored)
+**Output:** `data/raw/telemetry_sample.csv`
 
-### 2. Run Validation
+**Configuration:** Edit `configs/local.example.yaml` to adjust:
+- Number of devices
+- Sampling frequency
+- Simulation duration
+- Fault injection parameters
+
+### 2. Validate Data
 
 ```bash
 python -m itap.validation.report
 ```
 
 **Outputs:**
-- Console summary
+- Console summary (missing rates, range violations)
 - `docs/validation_report_sample.json`
 
-### 3. Ingest Data into SQL
+**Purpose:** Catch data quality issues before modeling
+
+### 3. Ingest to Database
 
 ```bash
 python -m itap.storage.ingest
 ```
 
 **Behavior:**
-- First run inserts all rows
-- Subsequent runs insert 0 rows (idempotent)
+- First run: Inserts all rows
+- Subsequent runs: Inserts 0 rows (idempotent)
 
-### 4. Train Anomaly Model
+**Database:** SQLite (`itap.db`) - PostgreSQL compatible schema
+
+### 4. Train Model
 
 ```bash
 python -m itap.ml.run_train
 ```
 
-**Outputs:**
-- Trained Isolation Forest pipeline
-- Saved to `artifacts/isoforest.joblib`
+**Output:** `artifacts/isoforest.joblib`
+
+**Training Data:** Only `RUN` and `IDLE` states with `anomaly_tag == null` (normal operation)
+
+**Model:** StandardScaler + IsolationForest (100 estimators, contamination=0.02)
 
 ### 5. Score & Generate Alerts
 
@@ -289,99 +347,145 @@ python -m itap.ml.run_score
 ```
 
 **Outputs:**
+- `artifacts/metrics.json` - Model performance metrics
+- `artifacts/explanations_top.json` - Per-event feature attributions
+- `artifacts/aggregate_summaries.json` - Device/fleet summaries
+- `artifacts/alerts.json` - Operator-ready alerts
+
+**Console Output:**
 - Threshold sweep results
-- Per-fault recall diagnostics
+- Per-tag recall breakdown
 - Top anomalous events with explanations
-- Device/fleet aggregation summaries
-- Operator-ready alerts
-- `artifacts/metrics.json`
-- `artifacts/explanations_top.json`
-- `artifacts/aggregate_summaries.json`
-- `artifacts/alerts.json`
+- Device aggregation summaries
+- Alert feed
 
 ### 6. Run Tests
 
 ```bash
-pytest -q
+pytest -v
 ```
 
-All tests should pass.
+All tests should pass. Coverage focuses on:
+- Feature engineering correctness
+- Pipeline determinism
+- Alert rule logic
 
 ---
 
-## Design Philosophy
-
-**Key principles:**
-
-1. **Operator-first, not model-first**
-   - Outputs are designed for human operators, not just data scientists
-   - Clear explanations over black-box predictions
-
-2. **Explain before alert**
-   - Every anomaly includes feature attribution
-   - Sensor family grouping for domain-relevant insights
-
-3. **Aggregate before escalate**
-   - Move from individual events to device/fleet patterns
-   - Reduce alert fatigue through intelligent summarization
-
-4. **Deterministic rules layered on ML**
-   - ML provides anomaly scores
-   - Rules provide actionable root causes and severity
-
-5. **Validation before storage**
-   - Prevent garbage-in/garbage-out
-   - Data quality checks at ingestion boundaries
-
-6. **Idempotent ingestion**
-   - Safe to re-run
-   - Supports backfills and automation
-
-7. **Time-aware modeling**
-   - Prevent data leakage
-   - Respect temporal causality
-
-8. **Explicit feature engineering**
-   - No hidden transformations
-   - Fully deterministic and testable
-
----
-
-## Current Maturity Level
-
-✅ **Implemented:**
-- Telemetry simulation with fault injection
-- Schema validation and diagnostics
-- Idempotent SQL ingestion pipeline
-- Time-series feature engineering (60+ features)
-- Unsupervised anomaly detection (Isolation Forest)
-- Threshold optimization and evaluation
-- Per-event explainability with sensor family attribution
-- Fleet/device aggregation
-- Rule-based alert generation with severity classification
-- JSON artifact generation
-
-🚧 **Future Enhancements:**
-- Streaming inference pipeline
-- Concept drift detection
-- Alert deduplication and suppression
-- REST API for real-time scoring
-- Web dashboard (Streamlit / Dash)
-- Auto-remediation hooks
-- Multi-model ensemble (Autoencoder, LSTM-VAE)
-- Forecasting (temperature, vibration trends)
-
----
-
-## Example Output
-
-### Console Output from `run_score.py`:
+## 📁 Project Structure
 
 ```
-Threshold sweep results (sorted by recall then precision):
-{'threshold': 0.1234, 'precision': 0.82, 'recall': 0.91, 'f1': 0.86, 'roc_auc': 0.94}
+itap/
+├── ml/                          # Machine learning pipeline
+│   ├── anomaly.py              # Model definition & serialization
+│   ├── features.py             # Time-series feature engineering
+│   ├── evaluate.py             # Threshold optimization & metrics
+│   ├── explain.py              # Explainability logic
+│   ├── aggregate.py            # Fleet/device aggregation
+│   ├── alerts.py               # Alert rule engine
+│   ├── run_train.py            # Training script
+│   └── run_score.py            # End-to-end scoring pipeline
+│
+├── telemetry/                   # Telemetry generation
+│   ├── generator.py
+│   ├── faults.py
+│   └── run_generate.py
+│
+├── validation/                  # Data quality
+│   ├── schema.py
+│   ├── diagnostics.py
+│   └── report.py
+│
+├── storage/                     # Database layer
+│   ├── database.py             # SQLAlchemy session
+│   ├── models.py               # ORM models
+│   ├── ingest.py               # CSV → DB pipeline
+│   └── query.py
+│
+configs/
+├── local.example.yaml          # Simulation config
+└── alert_rules.yaml            # Alert rule definitions
+│
+artifacts/                       # Generated outputs (gitignored)
+├── isoforest.joblib
+├── metrics.json
+├── explanations_top.json
+├── aggregate_summaries.json
+└── alerts.json
+│
+data/
+└── raw/                        # Generated telemetry (gitignored)
+│
+docs/
+└── validation_report_sample.json
+│
+tests/
+├── test_features.py
+├── test_validation.py
+└── test_alerts.py
+│
+requirements.txt
+pytest.ini
+README.md
+LICENSE
+```
 
-Selected metrics:
+---
+
+## ⚙️ Configuration
+
+### Alert Rules (`configs/alert_rules.yaml`)
+
+Define custom alert logic without code changes:
+
+```yaml
+rules:
+  - name: critical_burst
+    type: burst
+    device_window_minutes: 15
+    min_anomalies: 3
+    severity: critical
+    cause: "Multiple anomalies in short time window"
+    
+  - name: voltage_instability
+    type: dominant_family
+    family: Voltage
+    min_percent: 40
+    severity: warning
+    cause: "Power supply issues detected"
+    
+  - name: bearing_maintenance
+    type: tag_route
+    tag: bearing_wear
+    route: maintenance
+    severity: warning
+    cause: "Mechanical degradation - schedule inspection"
+```
+
+### Simulation Config (`configs/local.example.yaml`)
+
+```yaml
+telemetry:
+  devices: 10
+  duration_hours: 48
+  sample_rate_seconds: 60
+  
+faults:
+  injection_rate: 0.05
+  types:
+    - bearing_wear
+    - overheat
+    - power_spike
+```
+
+---
+
+## 📦 Outputs & Artifacts
+
+All artifacts are JSON for easy integration with dashboards, APIs, and monitoring tools.
+
+### `artifacts/metrics.json`
+```json
 {
   "threshold": 0.1234,
   "precision": 0.82,
@@ -389,40 +493,122 @@ Selected metrics:
   "f1": 0.86,
   "roc_auc": 0.94
 }
+```
 
-Per-tag recall (on tagged rows only):
-power_spike: recall=0.95, tp=19, fn=1
-overheat: recall=0.88, tp=15, fn=2
-bearing_wear: recall=0.92, tp=11, fn=1
+### `artifacts/alerts.json`
+```json
+[
+  {
+    "timestamp": "2026-01-01 05:31:10",
+    "device_id": "DEV-0006",
+    "severity": "CRITICAL",
+    "root_cause": "Power instability",
+    "score": 0.1852,
+    "confidence": 1.00,
+    "families": [["Voltage", 24.7], ["Temperature", 24.6]],
+    "rule_name": "power_instability_voltage_current"
+  }
+]
+```
 
-Top 20 anomalous events (highest scores):
-[DataFrame output]
-
-Top contributing features (normalized %) for flagged anomalies:
-- 2026-01-01 05:31:10 | DEV-0006 | RUN | tag=power_spike | score=0.185200 | pred=1
-    Families: Voltage=24.7%, Temperature=24.6%, Current=20.2%
-    voltage_v_trend: 5.9%
-    voltage_v_mean: 5.9%
-
-Fleet/Device Aggregations
-- DEV-0006 | n=3 | avg_score=0.1765 | p95=0.1839 | Voltage=25.2%, Temperature=25.0%
-
-ALERTS (operator-ready):
-- CRITICAL | 2026-01-01 05:31:10 | DEV-0006 | RUN | score=0.1852
-  cause=Power instability | conf=1.00 | Voltage=24.7%, Temperature=24.6%
-  rule=power_instability_voltage_current
+### `artifacts/aggregate_summaries.json`
+```json
+[
+  {
+    "group_key": "DEV-0006",
+    "n_flagged": 3,
+    "avg_score": 0.1765,
+    "p95_score": 0.1839,
+    "top_families": [["Voltage", 25.2], ["Temperature", 25.0]]
+  }
+]
 ```
 
 ---
 
-## Author
+## 💡 Design Principles
 
-**Jose Santana**  
-Entry-Level Software / Systems Engineer  
-Focus: Data Engineering, ML Systems, Industrial Analytics
+1. **Explainability Over Black-Box Accuracy**  
+   Operators need to understand *why*, not just *what*
+
+2. **Alert Quality Over Quantity**  
+   High-confidence, actionable alerts reduce fatigue
+
+3. **Operator Trust Through Transparency**  
+   Feature attribution and rule visibility build confidence
+
+4. **Data-Driven Configuration**  
+   YAML rules enable non-engineers to tune alerting
+
+5. **Production Realism**  
+   Idempotent pipelines, error handling, comprehensive logging
+
+6. **Separation of Concerns**  
+   ML scoring ≠ alerting logic. Each layer has clear responsibility.
 
 ---
 
-## License
+## 🗺 Roadmap
 
-MIT License
+### Near-Term Enhancements
+- [ ] Streamlit dashboard for fleet visualization
+- [ ] Alert delivery integrations (Slack, email, PagerDuty)
+- [ ] PostgreSQL backend support
+- [ ] Docker containerization
+- [ ] CI/CD pipeline (GitHub Actions)
+
+### Advanced Features
+- [ ] Streaming inference (Kafka/MQTT)
+- [ ] Seasonal decomposition (STL)
+- [ ] Multi-model ensemble (Autoencoder, LSTM-VAE)
+- [ ] Concept drift detection
+- [ ] Forecasting (temperature, vibration trends)
+- [ ] Auto-remediation hooks
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! This project is designed as a portfolio piece but also serves as a learning resource for industrial ML systems.
+
+**Areas for contribution:**
+- Additional fault injection patterns
+- New alert rule types
+- Dashboard improvements
+- Documentation
+- Test coverage
+
+Please open an issue first to discuss proposed changes.
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 👤 Author
+
+**Jose Santana**  
+Entry-Level Software / Systems Engineer
+
+**Focus Areas:**
+- Industrial Analytics & IoT
+- Data Engineering
+- ML Systems Design
+- Explainable AI
+
+**Contact:** [Your LinkedIn/Email]
+
+---
+
+## 🙏 Acknowledgments
+
+- Scikit-learn for robust ML primitives
+- SQLAlchemy for elegant ORM design
+- Industrial IoT community for domain insights
+
+---
+
+**Built with care to demonstrate production-ready industrial ML systems.** ⚙️
