@@ -21,7 +21,7 @@ from itap.ml.aggregate import (
     summaries_to_json,
 )
 from itap.ml.alerts import (
-    build_alert_event_from_row,
+    build_alerts_from_config,
     print_alerts,
     alerts_to_json,
 )
@@ -233,26 +233,17 @@ def main() -> None:
         json.dump(summaries_to_json(summaries), f, indent=2)
 
     # -----------------------------
-    # Alerts (rule-ready output)
+    # Alerts (rule engine)
     # -----------------------------
-    # For now: create one AlertEvent per explained row.
-    # Next maturity step: rule evaluation (burst rules, device streaks, family dominance, etc.)
-    alerts = [
-        build_alert_event_from_row(
-            row=r,
-            families=r.get("families_sorted", []),
-            top_features=r.get("top_features", []),
-            score_col="score",
-            tag_col="anomaly_tag",
-        )
-        for _, r in df_explain.iterrows()
-    ]
+    alerts = build_alerts_from_config(
+        df_explain=df_explain,
+        config_path="configs/alert_rules.yaml",
+    )
 
     print_alerts(alerts)
 
     with open(ARTIFACT_DIR / "alerts.json", "w", encoding="utf-8") as f:
         json.dump(alerts_to_json(alerts), f, indent=2)
-
     # -----------------------------
     # Persist metrics
     # -----------------------------

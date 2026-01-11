@@ -1,0 +1,76 @@
+# configs/alert_rules.yaml
+# Operator-facing alert rules (data-driven).
+# This file is validated by tests/test_alert_rules_config.py
+
+version: 1
+
+defaults:
+  # Global gates / defaults the engine can use (optional; safe to evolve).
+  min_score: 0.0
+  default_severity: warning
+
+  # Optional convenience mapping if you later want numeric ranking.
+  severity_rank:
+    info: 10
+    warning: 20
+    critical: 30
+
+routing:
+  # Tag → operational queue/team mapping (optional; rules below can also set route explicitly)
+  tag_to_route:
+    bearing_wear: maintenance
+    overheat_drift: thermal
+    power_instability: electrical
+
+rules:
+  # ------------------------------------------------------------
+  # 1) Burst alert: N anomalies in M minutes per device
+  # ------------------------------------------------------------
+  - name: Burst anomalies per device
+    type: burst
+    enabled: true
+    severity: critical
+
+    # REQUIRED by tests for type=burst
+    device_window_minutes: 10
+    min_anomalies: 3
+
+    # Optional tuning knobs (engine may ignore until implemented)
+    cooldown_minutes: 30
+    min_score: 0.16
+
+  # ------------------------------------------------------------
+  # 2) Dominant family alert: family contributes >= min_percent
+  # ------------------------------------------------------------
+  - name: Dominant Voltage family contribution
+    type: dominant_family
+    enabled: true
+    severity: warning
+
+    # REQUIRED by tests for type=dominant_family
+    family: Voltage
+    min_percent: 45
+
+    # Optional tuning knobs
+    min_score: 0.16
+
+  # ------------------------------------------------------------
+  # 3) Tagged fault routing: tag -> route/team
+  # ------------------------------------------------------------
+  - name: Route bearing_wear to maintenance
+    type: tag_route
+    enabled: true
+    severity: warning
+
+    # REQUIRED by tests for type=tag_route
+    tag: bearing_wear
+    route: maintenance
+
+  - name: Route overheat_drift to thermal
+    type: tag_route
+    enabled: true
+    severity: warning
+
+    # REQUIRED by tests for type=tag_route
+    tag: overheat_drift
+    route: thermal
