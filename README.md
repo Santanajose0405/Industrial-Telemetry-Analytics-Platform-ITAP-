@@ -17,60 +17,58 @@ ITAP is an end-to-end analytics platform that converts raw industrial telemetry 
 
 Unlike raw anomaly detection systems that simply flag outliers, ITAP emphasizes:
 
-- ✅ **Alert quality over volume** - Fewer, more actionable alerts
-- ✅ **Explainability over black-box scores** - Every alert includes root cause analysis
-- ✅ **Operational ownership** - Automatic routing to responsible teams
-- ✅ **Test-driven reliability** - 70+ unit tests ensure correctness
+- ✅ **Alert quality over volume** – fewer, more actionable alerts  
+- ✅ **Explainability over black-box scores** – every alert includes root cause analysis  
+- ✅ **Operational ownership** – automatic routing to responsible teams  
+- ✅ **Test-driven reliability** – 70+ unit tests ensure correctness  
 
-### The Problem
+At a high level:
 
-Most anomaly detection systems stop at scoring:
-- They generate too many alerts (alert fatigue)
-- Operators don't understand *why* an alert fired
-- No routing to responsible teams
-- No explainability or root cause
-
-### The ITAP Solution
-
-```
+```text
 Raw Telemetry → Smart Detection → Root Cause Analysis → Team Routing → Actionable Alerts
-```
+Result: Operators receive fewer alerts, understand each one, and know exactly who should respond.
 
-**Result:** Operators receive fewer alerts, understand each one, and know exactly who should respond.
+🚀 Key Capabilities
+1. Intelligent Alerting
+Three alert types, all configurable via YAML:
 
----
+Burst Detection – triggers when N anomalies occur within M minutes for a device
 
-## 🚀 Key Capabilities
+Example: 3 events within 15 minutes → Critical burst alert
 
-### 1. Intelligent Alerting
+Prevents single-event noise
 
-**Three alert types, all configurable via YAML:**
+Per-device tracking
 
-- **Burst Detection** - Triggers when N anomalies occur within M minutes for a device
-  - Example: 3 events within 15 minutes → Critical burst alert
-  - Prevents single-event noise
-  - Per-device tracking
+Dominant Sensor Family – triggers when specific sensor contributions exceed thresholds
 
-- **Dominant Sensor Family** - Triggers when specific sensor contributions exceed thresholds
-  - Example: Voltage > 45% → Power instability alert
-  - Weighted confidence scoring
-  - Multi-family rules (e.g., Voltage + Current)
+Example: Voltage > 45% → Power instability alert
 
-- **Tagged Fault Routing** - Routes known fault types to appropriate teams
-  - `bearing_wear` → Maintenance team
-  - `overheat_drift` → Thermal team
-  - `power_spike` → Electrical team
+Weighted confidence scoring
 
-**All rules are:**
-- ✅ YAML-configured (no code changes required)
-- ✅ Fail-fast validated at startup
-- ✅ Confidence-scored to reduce false positives
+Multi-family rules (e.g., Voltage + Current)
 
-### 2. Explainability
+Tagged Fault Routing – routes known fault types to appropriate teams
 
-Every alert includes:
+bearing_wear → Maintenance team
 
-```
+overheat_drift → Thermal team
+
+power_spike → Electrical team
+
+All rules are:
+
+✅ YAML-configured (no code changes required)
+
+✅ Validated at startup (fail-fast)
+
+✅ Confidence-scored to reduce false positives
+
+2. Explainability
+Every alert includes rich attribution:
+
+text
+Copy code
 Alert: Power instability detected
 Device: DEV-0006
 Score: 0.1852
@@ -86,469 +84,394 @@ Top Contributing Features:
   voltage_v_mean:   5.9%
   voltage_v_min:    5.9%
   temp_c_max:       5.3%
-```
+Benefits:
 
-**Benefits:**
-- Operators understand *why* the system flagged an event
-- Feature attribution guides troubleshooting
-- Sensor family grouping provides domain context
-- All explanations are persisted for audit trails
+Operators understand why the system flagged an event
 
-### 3. Fleet & Device Aggregation
+Feature attribution guides troubleshooting
 
-Move from individual events to strategic insights:
+Sensor family grouping provides domain context
 
-**Device-Level Summaries:**
-```
+All explanations are persisted for audit trails
+
+3. Fleet & Device Aggregation
+Move from individual events to strategic insights.
+
+Device-level summaries:
+
 DEV-0006 | n=3 events | avg_score=0.1765 | p95=0.1839
 Dominant Patterns: Voltage=25.2%, Temperature=25.0%, Current=20.1%
-```
+Fleet-level insights:
 
-**Fleet-Level Insights:**
-- Health rankings across all devices
-- Failure mode patterns
-- Maintenance prioritization
-- Trend analysis
+Health rankings across devices
 
-**Use Cases:**
-- 🏭 Fleet health dashboards
-- 🔧 Predictive maintenance planning
-- 📈 Reliability engineering
-- 💰 Cost optimization
+Failure mode patterns
 
-### 4. Operator-Ready API & Dashboard
+Maintenance prioritization
 
-#### FastAPI Backend
-```bash
-GET /api/alerts          # Retrieve alerts with filtering
-GET /api/devices         # Device aggregation summaries
-GET /api/metrics         # Model performance metrics
-WS  /ws/alerts          # Real-time alert streaming
-```
+Trend analysis
 
-**Features:**
-- Typed responses (Pydantic models)
-- CORS-enabled for frontend
-- Read-only (safe for production monitoring)
-- Artifact-backed (no database required)
+Use cases:
 
-#### Streamlit Dashboard
+🏭 Fleet health dashboards
 
-**4 Interactive Pages:**
-1. **Fleet Overview** - Health heatmap, alert breakdown
-2. **Alert Monitor** - Real-time feed with severity filtering
-3. **Device Details** - Deep-dive analytics per device
-4. **Model Performance** - Metrics, threshold curves, recall
+🔧 Predictive maintenance planning
 
-**Run in 30 seconds:**
-```bash
-streamlit run itap/dashboard/app.py
-```
+📈 Reliability engineering
 
----
+💰 Cost optimization
 
-## 🏗 Architecture
+4. Operator-Ready API & Web Dashboard
+FastAPI Backend
+The backend exposes read-only endpoints powered by JSON artifacts in artifacts/:
 
-```
+GET /api/health       # Health + artifact presence & freshness
+GET /api/overview     # High-level fleet KPIs (derived from artifacts)
+GET /api/alerts       # Alerts view (backed by alerts.json)
+GET /api/aggregates   # Fleet & device aggregates (aggregate_summaries.json)
+GET /api/metrics      # Model performance metrics (metrics.json)
+Features:
+
+Typed responses via Pydantic models
+
+CORS-enabled for frontend use
+
+Artifact-backed (no database required)
+
+Easy to swap artifacts for a real DB later
+
+React Operator Dashboard (Vite + TypeScript)
+The itap-dashboard/ app is a modern single-page UI for operators:
+
+Health page
+
+Calls /api/health
+
+Shows overall status, artifacts present/missing, per-artifact freshness
+
+Highlights stale/missing artifacts based on per-file SLAs
+
+One-click “Copy diagnostics JSON” button for tickets
+
+Overview page
+
+Summarized KPIs from /api/overview
+
+High-level status of the anomaly pipeline
+
+Uses the same health diagnostics, but distilled into operator-friendly cards
+
+Alerts page
+
+Table view for recent alerts (wired to /api/alerts)
+
+Severity, device, route, message columns
+
+Currently seeded with mock data but layout matches the API
+
+Aggregates page
+
+Fleet/device aggregates from /api/aggregates
+
+Bucketed summaries (e.g., last 1h / 24h) to support reliability/maintenance views
+
+Metrics page
+
+Time-series and KPI visualizations from /api/metrics
+
+Uses Recharts to display anomaly rate and related metrics
+
+Tech stack:
+
+Vite + React + TypeScript
+
+@tanstack/react-query for data fetching & caching
+
+Tailwind CSS for styling
+
+Recharts for charts
+
+🏗 Architecture
+
 ┌─────────────────────────────────────────────────────────────┐
-│                    Telemetry Data                            │
-│              (CSV, SQL, or streaming)                        │
+│                    Telemetry Data                          │
+│              (CSV, SQL, or streaming)                      │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                  Model Scoring                               │
-│         (Isolation Forest, artifact-based)                   │
+│                  Model Scoring                             │
+│         (Isolation Forest, artifact-based)                 │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│              Explainability Engine                           │
-│     (Feature attribution, sensor family grouping)            │
+│              Explainability Engine                         │
+│     (Feature attribution, sensor family grouping)          │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                 Alert Rules (YAML)                           │
-│    (Burst, dominant family, routing evaluation)              │
+│                 Alert Rules (YAML)                         │
+│    (Burst, dominant family, routing evaluation)            │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   Aggregation                                │
-│          (Fleet and device-level summaries)                  │
+│                   Aggregation                              │
+│          (Fleet and device-level summaries)                │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
-│              API & Dashboard                                 │
-│         (FastAPI + Streamlit for operators)                  │
+│              API & Web Dashboard                           │
+│     (FastAPI backend + React operator dashboard)           │
 └─────────────────────────────────────────────────────────────┘
-```
+Technology stack:
 
-**Technology Stack:**
-- **Model:** Scikit-learn Isolation Forest
-- **Rules:** YAML-configured, Python dataclasses
-- **API:** FastAPI with Pydantic validation
-- **Dashboard:** Streamlit with Plotly charts
-- **Tests:** Pytest with 70+ unit tests
-- **Storage:** Artifact-based (JSON), DB-ready schema
+Model: Scikit-learn Isolation Forest
 
----
+Rules: YAML-configured, Python dataclasses
 
-## 📁 Project Structure
+API: FastAPI + Pydantic
 
-```
+Dashboard: React (Vite, TS, Tailwind, Recharts)
+
+Tests: Pytest with 70+ unit tests
+
+Storage: Artifact-based JSON, DB-ready schema
+
+📁 Project Structure
+
 itap/
-├── api/                          # FastAPI service
-│   └── main.py                  # REST endpoints + WebSocket
+├── api/                        # FastAPI service
+│   └── main.py                 # REST endpoints (/api/*)
 │
-├── dashboard/                    # Streamlit UI
-│   ├── app.py                   # Main dashboard
-│   └── views/                   # Page components
+├── dashboard/                  # (Optional) Streamlit UI prototype
+│   ├── app.py
+│   └── views/
 │
-├── ml/                          # Core ML pipeline
-│   ├── anomaly.py              # Model training & scoring
-│   ├── features.py             # Time-series feature engineering
-│   ├── explain.py              # Explainability engine
-│   ├── aggregate.py            # Fleet/device aggregation
-│   ├── alerts.py               # Alert rules & evaluation
-│   ├── evaluate.py             # Threshold optimization
-│   ├── run_train.py            # Training script
-│   └── run_score.py            # Scoring pipeline
+├── ml/                         # Core ML pipeline
+│   ├── anomaly.py
+│   ├── features.py
+│   ├── explain.py
+│   ├── aggregate.py
+│   ├── alerts.py
+│   ├── evaluate.py
+│   ├── run_train.py
+│   └── run_score.py
 │
-├── storage/                     # Data layer
-│   ├── database.py             # SQLAlchemy session
-│   ├── models.py               # ORM models
-│   └── ingest.py               # CSV → DB pipeline
+├── storage/                    # Data layer (DB-ready)
+│   ├── database.py
+│   ├── models.py
+│   └── ingest.py
 │
-├── telemetry/                   # Data generation
-│   ├── generator.py            # Realistic telemetry simulation
-│   └── faults.py               # Fault injection logic
+├── telemetry/                  # Data generation
+│   ├── generator.py
+│   └── faults.py
 │
 configs/
 ├── alert_rules.yaml            # Declarative alert configuration
 └── local.example.yaml          # Simulation parameters
 │
 tests/                          # Comprehensive test suite
-├── conftest.py                 # Shared fixtures
-├── test_alert_rules_config.py  # Rule validation
-├── test_alert_rules_burst.py   # Burst detection tests
+├── conftest.py
+├── test_alert_rules_config.py
+├── test_alert_rules_burst.py
 ├── test_alert_rules_dominant_family.py
 ├── test_alert_rules_routing.py
-└── README.md                   # Test documentation
+└── README.md
 │
 artifacts/                      # Generated outputs (gitignored)
-├── isoforest.joblib           # Trained model
-├── metrics.json               # Performance metrics
-├── explanations_top.json      # Top event explanations
-├── aggregate_summaries.json   # Device/fleet summaries
-└── alerts.json                # Operator-ready alerts
+├── isoforest.joblib            # Trained model
+├── metrics.json                # Performance metrics
+├── explanations_top.json       # Top event explanations
+├── aggregate_summaries.json    # Device/fleet summaries
+└── alerts.json                 # Operator-ready alerts
+│
+itap-dashboard/                 # React operator dashboard (Vite + TS)
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tsconfig*.json
+├── public/
+└── src/
+    ├── main.tsx
+    ├── App.tsx
+    ├── api/
+    │   └── client.ts           # fetchJson + API helpers
+    ├── lib/
+    │   └── schemas/            # zod schemas for /api/* responses
+    ├── components/             # Layout, nav, stat cards, loading/error states
+    └── pages/                  # Overview, Alerts, Aggregates, Metrics, Health
 │
 README.md                       # This file
 requirements.txt                # Python dependencies
 pytest.ini                      # Test configuration
-```
 
----
+🏃 Running the Platform
 
-## 🏃 Running the Platform
+0. Prerequisites
+Python side:
 
-### Prerequisites
-
-```bash
-# Python 3.9+ required
-python --version
-
-# Create virtual environment
+python --version  # 3.9+
 python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-.venv\Scripts\activate     # Windows
-
-# Install dependencies
+.venv\Scripts\activate      # Windows
+# or: source .venv/bin/activate
 pip install -r requirements.txt
-```
+Node/JS side (for the React dashboard):
 
-### 1. Generate Telemetry (Optional)
+Node.js 18+ recommended (Node 20/22 also fine)
 
-```bash
+npm 9+ (comes with Node)
+
+Inside itap-dashboard/ you’ll run npm install once.
+
+1. Generate Telemetry (optional)
 python -m itap.telemetry.run_generate
-```
+Output: data/raw/telemetry_sample.csv
 
-**Output:** `data/raw/telemetry_sample.csv`
-
-### 2. Train the Model
-
-```bash
+2. Train the Model
 python -m itap.ml.run_train
-```
+Output: artifacts/isoforest.joblib
 
-**Output:** `artifacts/isoforest.joblib`
-
-### 3. Score & Generate Alerts
-
-```bash
+3. Score & Generate Artifacts
 python -m itap.ml.run_score
-```
+Outputs (all in artifacts/):
 
-**Outputs:**
-- `artifacts/metrics.json` - Model performance
-- `artifacts/explanations_top.json` - Event explainability
-- `artifacts/aggregate_summaries.json` - Fleet summaries
-- `artifacts/alerts.json` - Operator alerts
+metrics.json – model performance
 
-### 4. Start the API (Optional)
+explanations_top.json – event explainability
 
-```bash
+aggregate_summaries.json – fleet summaries
+
+alerts.json – operator alerts
+
+4. Start the API
+From the repo root:
+
 uvicorn itap.api.main:app --reload
-```
+Access:
 
-**Access:**
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
+API root: http://localhost:8000
 
-### 5. Launch the Dashboard
+OpenAPI docs: http://localhost:8000/docs
 
-```bash
+5. Start the React Operator Dashboard
+From the repo root:
+
+cd itap-dashboard
+npm install          # first time only
+npm run dev
+Access: http://localhost:5173
+
+Pages:
+
+/ or /overview – KPIs & high-level pipeline status
+
+/health – artifact presence, freshness SLAs, and diagnostics copy button
+
+/alerts – alerts table (ready for /api/alerts)
+
+/aggregates – fleet aggregates (ready for /api/aggregates)
+
+/metrics – model metrics and trend chart (ready for /api/metrics)
+
+6. (Optional) Legacy Streamlit Dashboard
+If you want to run the original Streamlit prototype:
+
 streamlit run itap/dashboard/app.py
-```
+Access: http://localhost:8501
 
-**Access:** http://localhost:8501
+🧪 Testing
 
----
-
-## 🧪 Testing
-
-This project uses **test-first alert design** to ensure correctness.
-
-### Run All Tests
-
-```bash
 pytest -v
-```
-
-### Run with Coverage
-
-```bash
+# or with coverage:
 pytest --cov=itap.ml.alerts --cov-report=html
-```
+What’s covered:
 
-### What's Tested
+Alert rule validation
 
-✅ **Rule Validation** (test_alert_rules_config.py)
-- AlertRule dataclass creation
-- DEFAULT_RULES consistency
-- Threshold validation
-- Configuration best practices
+Burst detection (time windows, per-device isolation, edge cases)
 
-✅ **Burst Detection** (test_alert_rules_burst.py)
-- Time window boundaries (inclusive/exclusive)
-- Per-device isolation
-- Sliding window behavior
-- Deduplication logic
-- Edge cases (exact boundaries, single events)
+Dominant family logic & confidence scoring
 
-✅ **Dominant Family Matching** (test_alert_rules_dominant_family.py)
-- Single and multi-family rules
-- Confidence scoring
-- Rule precedence
-- NaN/zero/boundary handling
+Tag routing and severity assignment
 
-✅ **Tag Routing** (test_alert_rules_routing.py)
-- Tag-to-team mapping
-- Unknown tag fallback
-- Tag normalization
-- Severity assignment
+70+ tests lock in both the business rules and edge-case behaviours.
 
-**Total: 70+ unit tests** covering happy paths, edge cases, and error conditions.
+💡 Design Philosophy
+1. Alerts Should Be Actionable
+Bad alert:
 
-### Test Philosophy
-
-```python
-# Tests define correctness
-def test_burst_triggers_with_three_events_within_window():
-    """
-    GIVEN: 3 anomalies within 15 minutes for same device
-    WHEN: Burst rule is evaluated
-    THEN: Alert is triggered with correct severity
-    """
-    # Test implementation
-```
-
-**Principles:**
-- Tests are documentation
-- Edge cases are explicit
-- Failures are actionable
-- No database dependencies (fast tests)
-
----
-
-## 💡 Design Philosophy
-
-### 1. Alerts Should Be Actionable
-
-**Bad Alert:**
-```
 Anomaly detected on DEV-0006
 Score: 0.1852
-```
+ITAP alert:
 
-**ITAP Alert:**
-```
 CRITICAL: Power instability on DEV-0006
 Root Cause: Voltage=24.7%, Current=20.2%
 Assigned to: Electrical Team
 Confidence: 1.00
 Action: Inspect power supply connections
-```
+2. Operators Should Understand Why
+Every alert includes root-cause attribution, feature contributions, and historical context.
+If an engineer can’t explain an alert in plain language, the system hasn’t done its job.
 
-### 2. Operators Should Understand Why
+3. Systems Should Fail Loudly, Not Silently
+Invalid YAML config? You get a clear error on startup, not a mysterious lack of alerts.
 
-Every alert includes:
-- Root cause analysis (sensor families)
-- Top contributing features
-- Confidence score
-- Historical context
+4. Rules Should Be Data, Not Code
+Operators can tune configs/alert_rules.yaml without touching Python.
+Changes are auditable and deployable like any other config.
 
-**Result:** Operators trust the system and respond faster.
+5. Tests Define Correctness
+Tests are written as executable documentation for business rules.
+If a behaviour is important, it gets a test.
 
-### 3. Systems Should Fail Loudly, Not Silently
+📊 Performance Metrics (Example)
+Precision: 82%
 
-```yaml
-# Invalid alert rule:
-rules:
-  - name: bad_rule
-    min_percent: 150  # Invalid: > 100%
-```
+Recall: 91%
 
-**ITAP response:**
-```
-❌ Configuration Error: Rule 'bad_rule' has invalid min_percent=150 (must be 0-100)
-```
+F1 Score: 86%
 
-**No silent failures. No runtime surprises.**
+ROC-AUC: 94%
 
-### 4. Rules Should Be Data, Not Code
+Alert quality:
 
-Change alerting behavior without touching Python:
+~70% reduction in alert volume vs threshold-based rules
 
-```yaml
-# configs/alert_rules.yaml
-rules:
-  - name: critical_power_issue
-    type: dominant_family
-    family: Voltage
-    min_percent: 45
-    severity: critical
-    route: electrical_team
-```
+100% of alerts include root cause
 
-**Benefits:**
-- Non-engineers can tune alerts
-- Changes are auditable (version control)
-- No deployment required
+Avg confidence: 0.87
 
-### 5. Tests Define Correctness
+🤝 Contributing
+Contributions welcome! Interesting areas:
 
-```python
-# This test locks in time boundary behavior
-def test_events_exactly_at_boundary_are_inclusive():
-    """
-    Decision: Events at exactly M minutes are INCLUDED.
-    This test prevents accidental behavior changes.
-    """
-```
+New fault injection patterns
 
-**Result:** Behavior is explicit, not implicit.
+Additional alert rule types (e.g., rate-of-change)
 
----
+Dashboard enhancements (filters, search, auth)
 
-## 🛣 Roadmap
+Integration tests, CI/CD, Docker
 
-### Phase 1: Core Platform ✅
-- [x] Anomaly detection pipeline
-- [x] Explainability engine
-- [x] Alert rules (burst, dominant family, routing)
-- [x] Unit test suite (70+ tests)
-- [x] FastAPI backend
-- [x] Streamlit dashboard
+Please open an issue first to discuss substantial changes.
 
-### Phase 2: Production Hardening 🚧
-- [ ] PostgreSQL backend (currently SQLite)
-- [ ] Alert deduplication with cooldown
-- [ ] YAML schema validation (jsonschema)
-- [ ] Docker containerization
-- [ ] CI/CD pipeline (GitHub Actions)
+📄 License
+MIT License – see LICENSE for details.
 
-### Phase 3: Advanced Features 🔮
-- [ ] Streaming inference (Kafka/MQTT)
-- [ ] Alert delivery (Slack, PagerDuty, email)
-- [ ] Forecasting (LSTM for temperature/vibration)
-- [ ] Concept drift detection
-- [ ] Multi-model ensemble (Autoencoder + IsolationForest)
-- [ ] Auto-remediation hooks
-
----
-
-## 📊 Performance Metrics
-
-**Model Performance:**
-- Precision: 82%
-- Recall: 91%
-- F1 Score: 86%
-- ROC-AUC: 94%
-
-**Alert Quality:**
-- 70% reduction in alert volume (vs. threshold-based)
-- 100% of alerts include root cause
-- Average confidence: 0.87
-
-**System Performance:**
-- Scoring: <100ms per device
-- API response: <50ms (p95)
-- Dashboard load: <2s
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Areas for contribution:
-
-- Additional fault injection patterns
-- New alert rule types (e.g., rate-of-change)
-- Dashboard improvements
-- Integration tests
-- Documentation
-
-**Please open an issue first to discuss proposed changes.**
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-## 👤 Author
-
-**Jose Santana**  
+👤 Author
+Jose Santana
 Entry-Level Software / Systems Engineer
 
-**Focus Areas:**
-- Industrial Analytics & IoT
-- ML Systems Design
-- Data Engineering
-- Explainable AI
+Focus areas:
 
-**Contact:** [LinkedIn](https://linkedin.com/in/jose-santana-5863b44a) 
+Industrial Analytics & IoT
 
----
+ML Systems Design
 
-## 🙏 Acknowledgments
+Data Engineering
 
-- Scikit-learn for robust ML primitives
-- FastAPI for modern API design
-- Streamlit for rapid dashboard development
-- Industrial IoT community for domain insights
+Explainable AI
 
----
+Contact: LinkedIn
 
-**Built with care to demonstrate production-ready ML systems engineering.** ⚙️
+Built to demonstrate production-ready ML systems engineering—from raw telemetry to an operator’s dashboard.
 
-*"Good alerts are invisible when things work, and invaluable when they don't."*
+“Good alerts are invisible when things work, and invaluable when they don't.”
