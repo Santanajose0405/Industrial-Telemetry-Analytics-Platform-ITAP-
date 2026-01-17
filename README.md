@@ -8,6 +8,8 @@
 
 **Full-stack operator platform for anomaly detection, explainability, and intelligent alerting on industrial telemetry.**
 
+**In this repository, alerts, metrics, and aggregates are generated from synthetic telemetry produced by itap.telemetry. This allows the full stack (generator → ML → API → dashboard) to run without external hardware.**
+
 Transform raw sensor data into high-quality, explainable alerts with a production-ready operator dashboard.
 
 ---
